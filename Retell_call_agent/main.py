@@ -18,7 +18,7 @@ def get_patient_by_phone(phone_number: str):
         return None
     
     clean_phone = phone_number.replace(" ", "").replace("-", "")
-    url = f"{SUPABASE_URL}/rest/v1/patient"
+    url = f"{SUPABASE_URL}/rest/v1/Patients"
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
