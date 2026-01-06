@@ -26,9 +26,14 @@ def get_patient_by_phone(phone_number: str):
     }
     params = {"phone": f"eq.{clean_phone}"}
     
+    start_time = datetime.now()
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=5)
+        response = requests.get(url, headers=headers, params=params, timeout=2)
         response.raise_for_status()
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        print(f"⏱️ Supabase query took: {duration:.2f}s")
+        
         patients = response.json()
         
         if patients and len(patients) > 0:
