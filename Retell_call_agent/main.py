@@ -25,73 +25,54 @@ async def root():
 @app.post("/firstWebhook")
 async def first_webhook(request: Request):
     """
-    Triggered when Retell starts the call.
-    Expects from_number to lookup patient data.
+    Ultra-permissive endpoint to debug Retell calls.
     """
-    print("\n" + "🚀" * 30)
-    print("🔔 RETELL: FIRST WEBHOOK RECEIVED")
-    print(f"Time: {datetime.now().strftime('%H:%M:%S')}")
+    print("\n" + "🚨" * 20)
+    print("DEBUG: firstWebhook HIT")
     
-    # Log headers for debugging
+    # 1. Log all headers
     headers = dict(request.headers)
-    print(f"Headers: {json.dumps(headers, indent=2)}")
+    print(f"DEBUG Headers: {json.dumps(headers, indent=2)}")
+    
+    # 2. Log raw body
+    raw_body = await request.body()
+    print(f"DEBUG Raw Body: {raw_body.decode(errors='ignore')}")
     
     try:
-        # Check if there is a body
-        body = await request.body()
-        if not body:
-            print("⚠️ Empty body received")
-            data = {}
+        if raw_body:
+            data = json.loads(raw_body)
         else:
-            try:
-                data = json.loads(body)
-                print(f"Payload: {json.dumps(data, indent=2)}")
-            except json.JSONDecodeError:
-                print(f"⚠️ Could not parse JSON body: {body.decode(errors='ignore')}")
-                data = {}
+            data = {}
         
-        # Look for from_number in various places
-        from_number = data.get("from_number") or data.get("caller_id") or "unknown"
+        from_number = data.get("from_number") or data.get("caller_id") or headers.get("x-retell-from-number") or "unknown"
+        print(f"DEBUG Detected Number: {from_number}")
         
-        if from_number == "unknown":
-            # Check headers (Retell often passes info there)
-            from_number = headers.get("x-retell-from-number") or "unknown"
-        
-        # Cleanup number
+        # Cleanup
         clean_number = str(from_number).replace(" ", "")
-        
-        # Lookup patient
         patient = MOCK_PATIENTS.get(clean_number)
         
         if patient:
-            print(f"✅ Patient FOUND in database: {patient['forename']} {patient['surname']}")
-            response = {"existing_patient_data": patient}
+            print(f"✅ Found Patient: {patient['forename']}")
+            res = {"existing_patient_data": patient}
         else:
-            print(f"👤 Patient NOT FOUND (New User: {from_number})")
-            response = {
+            print("👤 New Patient")
+            res = {
                 "existing_patient_data": {
                     "forename": None,
                     "surname": None,
                     "email": None,
                     "last_visit_date": None,
-                    "other_relevant_info": "Neznámy volajúci."
+                    "other_relevant_info": "Neznámy."
                 }
             }
         
-        print(f"Returning to Retell: {json.dumps(response)}")
-        print("🚀" * 30 + "\n")
-        return response
+        print(f"DEBUG Response: {json.dumps(res)}")
+        return res
+        
     except Exception as e:
-        print(f"❌ Error in firstWebhook: {e}")
-        return {
-            "existing_patient_data": {
-                "forename": None,
-                "surname": None,
-                "email": None,
-                "last_visit_date": None,
-                "other_relevant_info": f"Internal Error: {str(e)}"
-            }
-        }
+        print(f"💥 ERROR: {str(e)}")
+        # Fallback to empty but valid response
+        return {"existing_patient_data": {"forename": None}}
 
 # --- STUBS FOR OTHER ENDPOINTS ---
 
