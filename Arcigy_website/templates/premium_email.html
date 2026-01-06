@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="sk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light">
+    <title>Potvrdenie termínu</title>
+    <!--[if !mso]><!-->
+    <style>
+        /* Prevent font scaling in mobile */
+        body {
+            -webkit-text-size-adjust: none !important;
+            text-size-adjust: none !important;
+        }
+
+        /* Force text color to stay white even if visited */
+        a,
+        a:link,
+        a:visited,
+        a:hover,
+        a:active {
+            color: #ffffff !important;
+            text-decoration: none !important;
+        }
+
+        /* Desktop only - push button down */
+        .m-btn-row {
+            padding-top: 10px;
+        }
+
+        @media only screen and (max-width: 600px) {
+            /* FORCE PERFECT SQUARE - 1:1 ASPECT RATIO */
+
+            /* Main container must be square */
+            .m-full-width {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                height: 100vw !important;
+                max-height: 100vw !important;
+                aspect-ratio: 1 / 1 !important;
+                background-size: cover !important;
+                background-position: center !important;
+            }
+
+            /* Logo Area - proportional to square */
+            .m-header {
+                height: 13.7vw !important;
+            }
+
+            /* Spacer 1 */
+            .m-spacer-1 {
+                height: 36.4vw !important;
+            }
+
+            /* Text Content - MUCH SMALLER */
+            .m-content {
+                height: 16.4vw !important;
+            }
+
+            .m-title {
+                font-size: 1.8vw !important;
+                line-height: 1.2 !important;
+                color: #ffffff !important;
+                font-weight: 700 !important;
+            }
+
+            .m-details {
+                font-size: 1.8vw !important;
+                margin-top: 2px !important;
+                color: #ffffff !important;
+                line-height: 1.3 !important;
+            }
+
+            /* Spacer 2 */
+            .m-spacer-2 {
+                height: 14vw !important;
+            }
+
+            /* Main Button - SMALLER */
+            .m-btn-row {
+                height: 5.5vw !important;
+                padding-top: 0 !important;
+                /* Reset desktop padding */
+            }
+
+            .m-btn-link {
+                font-size: 1.8vw !important;
+                line-height: 5.5vw !important;
+                color: #ffffff !important;
+                font-weight: 700 !important;
+            }
+
+            .m-btn-span {
+                color: #ffffff !important;
+                -webkit-text-fill-color: #ffffff !important;
+            }
+
+            /* Spacer 3 */
+            .m-spacer-3 {
+                height: 3.4vw !important;
+            }
+
+            /* Socials Area */
+            .m-socials {
+                height: 10.6vw !important;
+            }
+
+            .m-social-icon {
+                width: 9vw !important;
+                height: 9vw !important;
+            }
+
+            .m-social-pad {
+                width: 1vw !important;
+            }
+        }
+    </style>
+    <!--<![endif]-->
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: 'Roboto Condensed', sans-serif;">
+    <center>
+        <!-- OUTLOOK WRAPPER 700x700 SQUARE -->
+        <!--[if mso]>
+        <table width="700" height="700" align="center" style="width:700px; height:700px;">
+        <tr>
+        <td valign="top" style="padding:0;">
+        <![endif]-->
+
+        <div style="max-width: 700px; margin: 0 auto; width: 100%;">
+
+            <!-- VML FOR OUTLOOK -->
+            <!--[if gte mso 9]>
+            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:700px;height:700px;">
+            <v:fill type="frame" src="cid:cyber_socials_layout" color="#050812" />
+            <v:textbox inset="0,0,0,0">
+            <![endif]-->
+
+            <!-- MAIN TABLE -->
+            <table class="m-full-width" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 0 auto; width: 100%; max-width: 700px; border-spacing: 0; 
+                       background-image: url('cid:cyber_socials_layout'); 
+                       background-repeat: no-repeat; 
+                       background-position: center top; 
+                       background-size: 100% 100%;">
+
+                <!-- 1. HEADER (Invisible Link) -->
+                <tr>
+                    <td class="m-header" height="96" valign="top">
+                        <a href="https://arcigy.com"
+                            style="display:block; width:100%; height:100%; border:0; text-decoration:none;">&nbsp;</a>
+                    </td>
+                </tr>
+
+                <!-- 2. SPACER 1 -->
+                <tr>
+                    <td class="m-spacer-1" height="265" style="font-size:0; line-height:0;">&nbsp;</td>
+                </tr>
+
+                <!-- 3. TEXT CONTENT -->
+                <tr>
+                    <td class="m-content" height="115" align="center" valign="middle" style="padding: 0 10%;">
+                        <div style="color: #ffffff;">
+                            <p class="m-title"
+                                style="margin:0; font-size:20px; font-weight:700; text-transform:uppercase; color:#ffffff;">
+                                {greeting}
+                            </p>
+                            <p class="m-details"
+                                style="margin:2px 0 0 0; font-size:18px; font-weight:300; opacity:0.9; color:#ffffff;">
+                                {details}
+                            </p>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- 4. SPACER 2 -->
+                <tr>
+                    <td class="m-spacer-2" height="108" style="font-size:0; line-height:0;">&nbsp;</td>
+                </tr>
+
+                <!-- 5. MAIN BUTTON (Text Only Overlay) -->
+                <tr>
+                    <td class="m-btn-row" height="38" align="center" valign="middle">
+                        <!-- Added explicit color span to defeat dark mode/link color overrides -->
+                        <a href="{confirm_url}" class="m-btn-link"
+                            style="display:inline-block; color:#ffffff; font-size:14px; font-weight:700; text-transform:uppercase; text-decoration:none; line-height:38px;">
+                            <span class="m-btn-span" style="color:#ffffff !important; text-decoration:none;">Potvrdiť
+                                termín</span>
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- 6. SPACER 3 -->
+                <tr>
+                    <td class="m-spacer-3" height="24" style="font-size:0; line-height:0;">&nbsp;</td>
+                </tr>
+
+                <!-- 7. SOCIALS -->
+                <tr>
+                    <td class="m-socials" height="74" align="right" valign="top" style="padding-right: 25px;">
+                        <table border="0" cellpadding="0" cellspacing="0" style="display:inline-block;">
+                            <tr>
+                                <!-- IG -->
+                                <td class="m-social-icon" width="75" height="75">
+                                    <a href="https://www.instagram.com/arcigy/"
+                                        style="display:block; width:100%; height:100%; border:0; text-decoration:none;">&nbsp;</a>
+                                </td>
+                                <td class="m-social-pad" width="5"></td>
+                                <!-- LI -->
+                                <td class="m-social-icon" width="75" height="75">
+                                    <a href="https://www.linkedin.com/company/arcigy/"
+                                        style="display:block; width:100%; height:100%; border:0; text-decoration:none;">&nbsp;</a>
+                                </td>
+                                <td class="m-social-pad" width="5"></td>
+                                <!-- MAIL -->
+                                <td class="m-social-icon" width="75" height="75">
+                                    <a href="mailto:hello@arcigy.com"
+                                        style="display:block; width:100%; height:100%; border:0; text-decoration:none;">&nbsp;</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Zero height cleanup -->
+                <tr>
+                    <td height="0" style="font-size:0; line-height:0;"></td>
+                </tr>
+            </table>
+
+            <!--[if gte mso 9]>
+            </v:textbox>
+            </v:rect>
+            <![endif]-->
+        </div>
+
+        <!--[if mso]>
+        </td>
+        </tr>
+        </table>
+        <![endif]-->
+    </center>
+</body>
+
+</html>
