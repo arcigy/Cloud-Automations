@@ -172,15 +172,43 @@ async def first_webhook(request: Request):
 
 # --- STUBS FOR OTHER ENDPOINTS ---
 
+from services_config import validate_service, SERVICES_DB
+
 @app.post("/Get_Appointment")
 async def get_appointment(request: Request):
     print("📅 Tool Call: Get_Appointment")
+    
+    # Parse body to get service name
+    try:
+        body = await request.json()
+        args = body.get("args", {})
+        requested_service = args.get("service") or args.get("service_type") or "General"
+    except:
+        requested_service = "General"
+        
+    print(f"🔍 Requested Service: {requested_service}")
+    
+    # Validate Service
+    canonical_service = validate_service(requested_service)
+    
+    if not canonical_service and requested_service != "General":
+        # If specific service requested but not found -> Error
+        print(f"❌ Service '{requested_service}' NOT FOUND in allowed list.")
+        valid_services_str = ", ".join(SERVICES_DB.keys())
+        return {
+            "error": f"Služba '{requested_service}' nie je v ponuke. Dostupné služby: {valid_services_str}. Prosím, overte požiadavku."
+        }
+        
+    if canonical_service:
+        print(f"✅ Validated Service: {canonical_service}")
+    
     now = datetime.now()
     slots = []
+    # Logic: Different services might have different slots, but for now generic
     for i in range(1, 4):
         date = (now + timedelta(days=i)).strftime("%Y-%m-%d")
-        slots.append({"datetime": f"{date} 09:00"})
-        slots.append({"datetime": f"{date} 14:30"})
+        slots.append({"datetime": f"{date} 09:00", "service": canonical_service or "General"})
+        slots.append({"datetime": f"{date} 14:30", "service": canonical_service or "General"})
     return {"available_slots": slots}
 
 @app.post("/GET_booked_appointment")
@@ -191,7 +219,25 @@ async def get_booked_appointment(request: Request):
 @app.post("/Book_appointment")
 async def book_appointment(request: Request):
     print(f"📝 Tool Call: Book_appointment")
-    return {"status": "success", "message": "Booking confirmed"}
+    
+    try:
+        body = await request.json()
+        args = body.get("args", {})
+        service_to_book = args.get("service") or "Unknown"
+    except:
+        service_to_book = "Unknown"
+
+    # Strict Validation for Booking
+    canonical = validate_service(service_to_book)
+    if not canonical:
+        print(f"🛑 BLOCKED BOOKING: Invalid service '{service_to_book}'")
+        return {
+            "status": "error",
+            "message": "Nemožno rezervovať túto službu. Služba sa nenachádza v cenníku Dentalis Clinic."
+        }
+
+    print(f"✅ Booking Confirmed for: {canonical}")
+    return {"status": "success", "message": f"Rezervácia potvrdená: {canonical}", "details": SERVICES_DB[canonical]}
 
 @app.post("/send_form_registration")
 async def send_form_registration(request: Request):
