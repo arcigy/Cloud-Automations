@@ -22,6 +22,15 @@ MOCK_PATIENTS = {
 async def root():
     return {"status": "online", "service": "Retell AI Backend"}
 
+@app.post("/")
+async def root_post(request: Request):
+    """
+    Handle generic POST requests to the root, often used by Retell for status updates.
+    """
+    body = await request.body()
+    print(f"🔔 ROOT POST RECEIVED: {body.decode(errors='ignore')}")
+    return {"status": "ok"}
+
 @app.post("/firstWebhook")
 async def first_webhook(request: Request):
     """
