@@ -24,7 +24,7 @@ def get_patient_by_phone(phone_number: str):
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json"
     }
-    params = {"or": f"(phone.eq.{clean_phone},phone_number.eq.{clean_phone},tel.eq.{clean_phone})"}
+    params = {"phone": f"eq.{clean_phone}"}
     
     try:
         response = requests.get(url, headers=headers, params=params, timeout=5)
@@ -59,7 +59,7 @@ MOCK_PATIENTS = {
         "other_relevant_info": "Pacient má strach z ihiel."
     },
     "+421919165630": {
-        "forename": "Pán",
+        "forename": "Andrej",
         "surname": "Repický",
         "email": "repicky@example.com",
         "last_visit_date": "2024-01-01",
