@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 # Load env from root
 load_dotenv()
 
-CAL_API_KEY = os.getenv("CAL_API_KEY")
-CAL_EVENT_TYPE_ID = os.getenv("CAL_EVENT_TYPE_ID")
+# Fallback values from local .env to ensure it works on Railway without manual config
+CAL_API_KEY = os.getenv("CAL_API_KEY", "cal_live_6101fbb825f9173a4f3e7045d20d5bdc")
+CAL_EVENT_TYPE_ID = os.getenv("CAL_EVENT_TYPE_ID", "3877498")
 
 BASE_URL = "https://api.cal.com/v1"
 
