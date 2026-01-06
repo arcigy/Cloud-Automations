@@ -45,86 +45,42 @@ def validate_service(service_name: str) -> Optional[str]:
 # --- CALENDAR INTEGRATION ---
 def get_available_slots_for_days(days=4):
     now = datetime.now()
-    # Explicit format to avoid microsecond issues
     start_iso = (now + timedelta(days=1)).strftime("%Y-%m-%dT08:00:00Z")
     end_iso = (now + timedelta(days=days+1)).strftime("%Y-%m-%dT18:00:00Z")
-    
-    params = {
-        "apiKey": CAL_API_KEY, 
-        "eventTypeId": CAL_EVENT_TYPE_ID, 
-        "startTime": start_iso, 
-        "endTime": end_iso
-    }
-    print(f"📅 Fetching slots from Cal.com: {start_iso} to {end_iso}")
-    
+    params = {"apiKey": CAL_API_KEY, "eventTypeId": CAL_EVENT_TYPE_ID, "startTime": start_iso, "endTime": end_iso}
     try:
-        resp = requests.get(f"{CAL_BASE_URL}/slots", params=params, timeout=8)
-        if not resp.ok:
-            print(f"❌ Cal.com API Error: {resp.status_code} - {resp.text}")
-            return []
-            
+        resp = requests.get(f"{CAL_BASE_URL}/slots", params=params, timeout=5)
         raw_slots = resp.json().get("slots", {})
         formatted = []
         for date_key, day_slots in raw_slots.items():
             for s in day_slots:
                 dt_obj = datetime.fromisoformat(s.get("time").replace("Z", "+00:00"))
-                formatted.append({
-                    "datetime": dt_obj.strftime("%Y-%m-%d %H:%M"), 
-                    "iso": s.get("time")
-                })
-        print(f"✅ Found {len(formatted)} slots.")
-        return formatted[:12] # Limit to 12
-    except Exception as e: 
-        print(f"❌ Exception in slot fetching: {e}")
-        return []
+                formatted.append({"datetime": dt_obj.strftime("%Y-%m-%d %H:%M"), "iso": s.get("time")})
+        return formatted[:15]
+    except: return []
 
 def create_booking_cal(name, phone, email, datetime_iso, notes=None):
-    payload = {
-        "eventTypeId": int(CAL_EVENT_TYPE_ID), 
-        "start": datetime_iso, 
-        "responses": {
-            "name": name or "Unknown Patient", 
-            "email": email or "no-email@provided.com", 
-            "phone": phone or "Unknown"
-        }, 
-        "timeZone": "Europe/Bratislava", 
-        "language": "sk",
-        "metadata": {"source": "retell_ai", "notes": notes}
-    }
-    print(f"📝 Creating booking at {datetime_iso} for {name}")
+    payload = {"eventTypeId": int(CAL_EVENT_TYPE_ID), "start": datetime_iso, "responses": {"name": name or "Unknown", "email": email or "no-email@provided.com", "phone": phone or "Unknown"}, "timeZone": "Europe/Bratislava", "language": "sk"}
     try:
         resp = requests.post(f"{CAL_BASE_URL}/bookings", params={"apiKey": CAL_API_KEY}, json=payload, timeout=8)
-        if resp.ok:
-            print("✅ Booking successfully created in Cal.com!")
-            return {"status": "success", "data": resp.json()}
-        else:
-            print(f"❌ Booking failed: {resp.status_code} - {resp.text}")
-            return {"status": "error", "message": resp.text}
-    except Exception as e: 
-        print(f"❌ Exception in booking: {e}")
-        return {"status": "error", "message": str(e)}
+        return {"status": "success" if resp.ok else "error", "data": resp.json()}
+    except Exception as e: return {"status": "error", "message": str(e)}
 
 # --- PATIENT LOOKUP ---
 def get_patient_by_phone(phone_number: str):
-    if not SUPABASE_URL or not SUPABASE_KEY: 
-        print("⚠️ Missing Supabase credentials.")
-        return None
+    if not phone_number or "UNKNOWN" in phone_number: return None
+    if not SUPABASE_URL or not SUPABASE_KEY: return None
     clean_phone = phone_number.replace(" ", "").replace("-", "")
     url = f"{SUPABASE_URL}/rest/v1/Patients"
     headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
     try:
-        print(f"🔍 Searching Supabase for: {clean_phone}")
         response = requests.get(url, headers=headers, params={"phone": f"eq.{clean_phone}"}, timeout=3)
         patients = response.json()
-        if patients and len(patients) > 0:
+        if patients:
             p = patients[0]
-            print(f"✅ Found patient: {p.get('forename')} {p.get('surname')}")
-            return {"forename": p.get("forename"), "surname": p.get("surname")}
-        print("👤 Patient not found in Supabase.")
+            return {"forename": p.get("forename") or p.get("first_name"), "surname": p.get("surname") or p.get("last_name")}
         return None
-    except Exception as e: 
-        print(f"❌ Supabase error: {e}")
-        return None
+    except: return None
 
 # --- FASTAPI APP ---
 app = FastAPI()
@@ -132,79 +88,73 @@ app = FastAPI()
 MOCK_PATIENTS = {"+421919165630": {"forename": "Andrej", "surname": "Repický"}}
 
 @app.get("/")
-async def root(): return {"status": "online", "time": datetime.now().isoformat()}
+async def root(): return {"status": "online"}
 
 @app.post("/firstWebhook")
 async def first_webhook(request: Request):
-    print("\n🔔 --- firstWebhook START ---")
+    print("\n🔔 --- firstWebhook CALLED ---")
+    
+    # 1. EXTRACT FROM QUERY PARAMS (Priority for Retell's current setup)
+    query_number = request.query_params.get("number") or request.query_params.get("from_number")
+    
+    # 2. EXTRACT FROM BODY
+    body_data = {}
     try:
-        body = await request.json()
-        print(f"📦 Payload: {json.dumps(body, indent=2)}")
+        body_data = await request.json()
+    except:
+        pass
         
-        call_data = body.get("call", {})
-        from_number = call_data.get("from_number") or body.get("from_number") or "UNKNOWN"
-        clean_number = str(from_number).replace(" ", "")
-        print(f"📞 From Number: {clean_number}")
+    call_data = body_data.get("call", {})
+    from_number = (
+        query_number or 
+        call_data.get("from_number") or 
+        body_data.get("from_number") or 
+        "UNKNOWN"
+    )
+    
+    print(f"📞 Identified Number: {from_number}")
+    clean_number = str(from_number).replace(" ", "").replace("{from_number}", "")
+    
+    # Validation against empty or template string
+    if not clean_number or clean_number == "UNKNOWN":
+        greeting = "Dobrý deň, tu recepcia Dentalis Clinic, ako vám môžem pomôcť?"
+        return {"existing_patient_data": {"forename": None}, "greeting_message": greeting}
+
+    patient = get_patient_by_phone(clean_number) or MOCK_PATIENTS.get(clean_number)
+    
+    if patient:
+        name = f"{patient.get('forename', '')} {patient.get('surname', '')}"
+        greeting = f"Dobrý deň {name}, ako vám dnes môžem pomôcť?"
+        res = {"existing_patient_data": patient, "greeting_message": greeting}
+    else:
+        greeting = "Dobrý deň, tu recepcia Dentalis Clinic, ako vám môžem pomôcť?"
+        res = {"existing_patient_data": {"forename": None}, "greeting_message": greeting}
         
-        patient = get_patient_by_phone(clean_number) or MOCK_PATIENTS.get(clean_number)
-        
-        if patient:
-            name = f"{patient.get('forename', '')} {patient.get('surname', '')}"
-            greeting = f"Dobrý deň {name}, ako vám dnes môžem pomôcť?"
-            res = {"existing_patient_data": patient, "greeting_message": greeting}
-        else:
-            res = {"existing_patient_data": {"forename": None}, "greeting_message": "Dobrý deň, tu recepcia Dentalis Clinic, ako vám môžem pomôcť?"}
-            
-        print(f"📤 Result: {res['greeting_message']}")
-        return res
-    except Exception as e:
-        print(f"💥 firstWebhook Error: {e}")
-        return {"greeting_message": "Dobrý deň, tu recepcia Dentalis Clinic."}
+    print(f"📤 Greeting: {greeting}")
+    return res
 
 @app.post("/Get_Appointment")
 async def get_appointment(request: Request):
-    print("\n📅 --- Get_Appointment START ---")
-    try:
-        data = await request.json()
-        print(f"📦 Payload: {json.dumps(data, indent=2)}")
-        s_name = data.get("args", {}).get("service", "General")
-        canonical = validate_service(s_name)
-        
-        slots = get_available_slots_for_days(days=4)
-        for s in slots: s["service"] = canonical or "General"
-        
-        print(f"🍱 Returning {len(slots)} slots for {canonical or 'General'}")
-        return {"available_slots": slots}
-    except Exception as e:
-        print(f"💥 Get_Appointment Error: {e}")
-        return {"available_slots": []}
+    try: data = await request.json()
+    except: data = {}
+    s_name = data.get("args", {}).get("service", "General")
+    canonical = validate_service(s_name)
+    slots = get_available_slots_for_days(days=4)
+    for s in slots: s["service"] = canonical or "General"
+    return {"available_slots": slots}
 
 @app.post("/Book_appointment")
 async def book_appointment(request: Request):
-    print("\n📝 --- Book_appointment START ---")
+    try: data = await request.json()
+    except: return {"status": "error", "message": "No body"}
+    args = data.get("args", {})
     try:
-        data = await request.json()
-        print(f"📦 Payload: {json.dumps(data, indent=2)}")
-        args = data.get("args", {})
-        
-        dt_str = args.get("datetime", "")
-        p_name = args.get("patient_name") or "Anonymous"
-        p_phone = args.get("patient_phone") or "N/A"
-        service = args.get("service")
-        
-        try:
-            dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
-            iso = dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-        except: 
-            iso = dt_str
-            
-        result = create_booking_cal(name=p_name, phone=p_phone, email="", datetime_iso=iso, notes=f"Service: {service}")
-        return result
-    except Exception as e:
-        print(f"💥 Book_appointment Error: {e}")
-        return {"status": "error", "message": str(e)}
+        dt = datetime.strptime(args.get("datetime", ""), "%Y-%m-%d %H:%M")
+        iso = dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    except: iso = args.get("datetime")
+    return create_booking_cal(name=args.get("patient_name"), phone=args.get("patient_phone"), email="", datetime_iso=iso, notes=f"Service: {args.get('service')}")
 
-# --- STUBS TO AVOID 404 ---
+# --- STUBS (To avoid 404) ---
 @app.post("/send_form_registration")
 async def s1(r: Request): return {"status": "success"}
 @app.post("/Change_appointment")
