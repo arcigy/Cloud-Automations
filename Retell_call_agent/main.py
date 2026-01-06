@@ -145,8 +145,19 @@ async def first_webhook(request: Request):
             patient = MOCK_PATIENTS.get(clean_number)
         
         if patient:
-            print(f"✅ Found Patient: {patient.get('forename')} {patient.get('surname')}")
-            res = {"existing_patient_data": patient}
+            forename = patient.get('forename')
+            surname = patient.get('surname')
+            print(f"✅ Found Patient: {forename} {surname}")
+            
+            greeting = f"Dobrý deň {forename} {surname}, ako vám dnes môžem pomôcť?"
+            # Fallback ak chýba krstné meno
+            if not forename and surname:
+                greeting = f"Dobrý deň pán/pani {surname}, ako vám dnes môžem pomôcť?"
+                
+            res = {
+                "existing_patient_data": patient,
+                "greeting_message": greeting
+            }
         else:
             print(f"👤 New Patient (number: {clean_number})")
             res = {
@@ -156,10 +167,11 @@ async def first_webhook(request: Request):
                     "email": None,
                     "last_visit_date": None,
                     "other_relevant_info": "Neznámy."
-                }
+                },
+                "greeting_message": "Dobrý deň, tu recepcia Dentalis Clinic, ako vám môžem pomôcť?"
             }
         
-        print(f"📤 RESPONSE: {json.dumps(res)}")
+        print(f"📤 RESPONSE: {json.dumps(res, ensure_ascii=False)}")
         return res
         
     except Exception as e:
