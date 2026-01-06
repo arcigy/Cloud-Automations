@@ -57,6 +57,13 @@ MOCK_PATIENTS = {
         "email": "milan@example.com",
         "last_visit_date": "2023-10-15",
         "other_relevant_info": "Pacient má strach z ihiel."
+    },
+    "+421919165630": {
+        "forename": "Test",
+        "surname": "User",
+        "email": "test@example.com",
+        "last_visit_date": "2024-01-01",
+        "other_relevant_info": "VIP klient, preferuje poobedné termíny."
     }
 }
 
