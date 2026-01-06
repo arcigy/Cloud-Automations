@@ -145,19 +145,8 @@ async def first_webhook(request: Request):
             patient = MOCK_PATIENTS.get(clean_number)
         
         if patient:
-            forename = patient.get('forename')
-            surname = patient.get('surname')
-            print(f"✅ Found Patient: {forename} {surname}")
-            
-            greeting = f"Dobrý deň {forename} {surname}, ako vám dnes môžem pomôcť?"
-            # Fallback ak chýba krstné meno
-            if not forename and surname:
-                greeting = f"Dobrý deň pán/pani {surname}, ako vám dnes môžem pomôcť?"
-                
-            res = {
-                "existing_patient_data": patient,
-                "greeting_message": greeting
-            }
+            print(f"✅ Found Patient: {patient.get('forename')} {patient.get('surname')}")
+            res = {"existing_patient_data": patient}
         else:
             print(f"👤 New Patient (number: {clean_number})")
             res = {
@@ -167,11 +156,10 @@ async def first_webhook(request: Request):
                     "email": None,
                     "last_visit_date": None,
                     "other_relevant_info": "Neznámy."
-                },
-                "greeting_message": "Dobrý deň, tu recepcia Dentalis Clinic, ako vám môžem pomôcť?"
+                }
             }
         
-        print(f"📤 RESPONSE: {json.dumps(res, ensure_ascii=False)}")
+        print(f"📤 RESPONSE: {json.dumps(res)}")
         return res
         
     except Exception as e:
@@ -185,12 +173,12 @@ async def first_webhook(request: Request):
 # --- STUBS FOR OTHER ENDPOINTS ---
 
 from services_config import validate_service, SERVICES_DB
+from calendar_integration import get_available_slots_for_days, create_booking_cal
 
 @app.post("/Get_Appointment")
 async def get_appointment(request: Request):
     print("📅 Tool Call: Get_Appointment")
     
-    # Parse body to get service name
     try:
         body = await request.json()
         args = body.get("args", {})
@@ -200,27 +188,29 @@ async def get_appointment(request: Request):
         
     print(f"🔍 Requested Service: {requested_service}")
     
-    # Validate Service
     canonical_service = validate_service(requested_service)
     
     if not canonical_service and requested_service != "General":
-        # If specific service requested but not found -> Error
-        print(f"❌ Service '{requested_service}' NOT FOUND in allowed list.")
+        print(f"❌ Service '{requested_service}' NOT FOUND.")
         valid_services_str = ", ".join(SERVICES_DB.keys())
         return {
-            "error": f"Služba '{requested_service}' nie je v ponuke. Dostupné služby: {valid_services_str}. Prosím, overte požiadavku."
+            "error": f"Služba '{requested_service}' nie je v ponuke. Dostupné služby: {valid_services_str}."
         }
         
-    if canonical_service:
-        print(f"✅ Validated Service: {canonical_service}")
+    print(f"✅ Validated Service: {canonical_service}")
     
-    now = datetime.now()
-    slots = []
-    # Logic: Different services might have different slots, but for now generic
-    for i in range(1, 4):
-        date = (now + timedelta(days=i)).strftime("%Y-%m-%d")
-        slots.append({"datetime": f"{date} 09:00", "service": canonical_service or "General"})
-        slots.append({"datetime": f"{date} 14:30", "service": canonical_service or "General"})
+    # FETCH REAL SLOTS
+    slots = get_available_slots_for_days(days=4)
+    
+    # Filter or add service info
+    # We return the list directly. Agent will pick one.
+    # We add the 'service' field to each slot just to be consistent with what we promised the agent
+    for s in slots:
+        s["service"] = canonical_service or "General"
+        
+    if not slots:
+        return {"message": "Momentálne nie sú voľné žiadne termíny na najbližšie 4 dni. Skúste neskôr."}
+
     return {"available_slots": slots}
 
 @app.post("/GET_booked_appointment")
@@ -235,21 +225,54 @@ async def book_appointment(request: Request):
     try:
         body = await request.json()
         args = body.get("args", {})
+        
         service_to_book = args.get("service") or "Unknown"
+        datetime_str = args.get("datetime")
+        patient_name = args.get("patient_name") or "Neznámy"
+        patient_phone = args.get("patient_phone") or "0000"
+        
     except:
-        service_to_book = "Unknown"
+        return {"status": "error", "message": "Invalid request body"}
 
-    # Strict Validation for Booking
+    # Validation
     canonical = validate_service(service_to_book)
     if not canonical:
-        print(f"🛑 BLOCKED BOOKING: Invalid service '{service_to_book}'")
         return {
             "status": "error",
-            "message": "Nemožno rezervovať túto službu. Služba sa nenachádza v cenníku Dentalis Clinic."
+            "message": "Nemožno rezervovať túto službu."
         }
+        
+    if not datetime_str:
+         return {"status": "error", "message": "Chýba čas termínu."}
 
-    print(f"✅ Booking Confirmed for: {canonical}")
-    return {"status": "success", "message": f"Rezervácia potvrdená: {canonical}", "details": SERVICES_DB[canonical]}
+    # Convert readable datetime back to ISO if needed, or find the ISO from slots
+    # But simpler: Construct ISO from "YYYY-MM-DD HH:MM"
+    try:
+        # Expected input: "2024-01-09 09:30"
+        # We need to add T and :00.000Z or similar for Cal.com
+        # Or parse it.
+        # Let's try to parse
+        dt = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M")
+        iso_start = dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    except ValueError:
+        # Maybe it came as ISO already?
+        iso_start = datetime_str
+        
+    # CREATE BOOKING
+    result = create_booking_cal(
+        name=patient_name,
+        phone=patient_phone,
+        email="", # No email context usually
+        datetime_iso=iso_start,
+        notes=f"Service: {canonical}"
+    )
+
+    if result["status"] == "success":
+        print(f"✅ Booking Confirmed for: {canonical} at {iso_start}")
+        return {"status": "success", "message": f"Rezervácia potvrdená: {canonical} na {datetime_str}", "details": result}
+    else:
+        print(f"❌ Booking Failed: {result['message']}")
+        return {"status": "error", "message": "Nepodarilo sa rezervovať termín. Skúste iný čas."}
 
 @app.post("/send_form_registration")
 async def send_form_registration(request: Request):
